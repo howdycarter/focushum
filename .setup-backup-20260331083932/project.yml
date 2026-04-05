@@ -1,0 +1,70 @@
+name: FocusHum
+options:
+  deploymentTarget:
+    iOS: '16.0'
+  createIntermediateGroups: true
+  xcodeVersion: '16.0'
+settings:
+  base:
+    SWIFT_VERSION: 5.9
+    IPHONEOS_DEPLOYMENT_TARGET: 16.0
+targets:
+  FocusHum:
+    type: application
+    platform: iOS
+    dependencies:
+      - package: Supabase
+      - package: TelemetryDeck
+        product: TelemetryClient
+      - package: RevenueCat
+        product: RevenueCat
+    sources:
+      - path: Config
+        excludes:
+          - Secrets.sample.swift
+      - path: Core
+      - path: Modules
+      - path: Backend
+        excludes:
+          - "**/*.md"
+          - "**/*.txt"
+          - "**/Python/**"
+      - path: Resources
+        excludes:
+          - Info.plist
+      - path: Features
+    info:
+      path: Resources/Info.plist
+      properties:
+        UILaunchStoryboardName: LaunchScreen
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIBackgroundModes:
+          - audio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.focushum.app
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0
+    scheme:
+      testTargets:
+        - name: FocusHumTests
+
+  FocusHumTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: FocusHum
+
+packages:
+  Supabase:
+    url: https://github.com/supabase-community/supabase-swift
+    from: 2.0.0
+  TelemetryDeck:
+    url: https://github.com/TelemetryDeck/SwiftSDK
+    from: 1.5.1
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios
+    from: 5.0.0

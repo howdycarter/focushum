@@ -6,6 +6,18 @@ import XCTest
 @testable import FocusHum
 
 final class ContainerTests: XCTestCase {
+    func testUnknownEntitlementRefreshPreservesPaidAccess() {
+        let failedRefresh = Notification(name: .subscriptionDidChange)
+        XCTAssertTrue(PremiumAccess.resolve(current: true, notification: failedRefresh, paywallEnabled: true))
+        XCTAssertFalse(PremiumAccess.resolve(current: false, notification: failedRefresh, paywallEnabled: true))
+    }
+
+    func testVerifiedRevocationRemovesAccessUnlessPaywallIsDisabled() {
+        let revoked = Notification(name: .subscriptionDidChange, userInfo: ["hasActiveEntitlement": false])
+        XCTAssertFalse(PremiumAccess.resolve(current: true, notification: revoked, paywallEnabled: true))
+        XCTAssertTrue(PremiumAccess.resolve(current: false, notification: revoked, paywallEnabled: false))
+    }
+
     func testUnconfiguredPurchasesDoNotExposeDemoProducts() async {
         let options = await NoopPurchasesService().loadOfferings(includeAll: true)
         XCTAssertTrue(options.isEmpty)
@@ -51,6 +63,27 @@ final class PomodoroTests: XCTestCase {
         let timer = PomodoroViewModel(defaults: defaults, now: { clock.date }, automaticTicks: false)
         timer.hasPremiumAccess = true
         return (timer, defaults)
+    }
+
+    func testCountdownFeedbackOnlyOnRemainingSecondChanges() {
+        let clock = TestClock()
+        let defaults = UserDefaults(suiteName: "FocusHumCountdownTests.\(UUID().uuidString)")!
+        var pulses = 0
+        let timer = PomodoroViewModel(defaults: defaults, now: { clock.date }, automaticTicks: false,
+                                      countdownFeedback: { pulses += 1 })
+        timer.startOrResume()
+        clock.date.addTimeInterval(1_495)
+        timer.refresh()
+        timer.refresh()
+        XCTAssertEqual(pulses, 1)
+        clock.date.addTimeInterval(1)
+        timer.refresh()
+        XCTAssertEqual(pulses, 2)
+        timer.hapticsEnabled = false
+        clock.date.addTimeInterval(1)
+        timer.refresh()
+        XCTAssertEqual(pulses, 2)
+        timer.reset()
     }
 
     func testDeadlineRecoversElapsedTimeAfterSuspension() {

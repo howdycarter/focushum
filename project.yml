@@ -50,6 +50,7 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 1.0
     scheme:
+      storeKitConfiguration: Tests/Fixtures/FocusHum.storekit
       testTargets:
         - name: FocusHumTests
 
@@ -62,6 +63,10 @@ targets:
     platform: iOS
     sources:
       - path: Tests
+        excludes:
+          - Fixtures
+      - path: Tests/Fixtures
+        buildPhase: resources
     dependencies:
       - target: FocusHum
 

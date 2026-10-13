@@ -60,12 +60,19 @@ struct HomeView: View {
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showHistory)  { HistoryView() }
-        .sheet(isPresented: $showSettings) { FocusSettingsView(pomodoroVM: pomodoroVM, isPremium: hasPremium) }
+        .sheet(isPresented: $showSettings) { FocusSettingsView(pomodoroVM: pomodoroVM) }
         .sheet(isPresented: $showUpgrade) { PaywallView() }
-        .onAppear { pomodoroVM.setModelContext(modelContext) }
+        .onAppear {
+            pomodoroVM.setModelContext(modelContext)
+            if !container.config.featureFlags.paywall {
+                hasPremium = true
+                pomodoroVM.hasPremiumAccess = true
+            }
+        }
         .task { await container.purchasesService.refreshSubscriptionStatus() }
         .onReceive(NotificationCenter.default.publisher(for: .subscriptionDidChange)) { notification in
-            hasPremium = notification.userInfo?["hasActiveEntitlement"] as? Bool ?? false
+            hasPremium = PremiumAccess.resolve(current: hasPremium, notification: notification,
+                                               paywallEnabled: container.config.featureFlags.paywall)
             pomodoroVM.hasPremiumAccess = hasPremium
             if !hasPremium && audioVM.selectedNoise.isPremium { audioVM.selectedNoise = .brown }
         }

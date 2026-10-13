@@ -80,6 +80,7 @@ final class PomodoroViewModel {
     private let defaults: UserDefaults
     private let now: () -> Date
     private let automaticTicks: Bool
+    private let countdownFeedback: () -> Void
     private var timerTask: Task<Void, Never>?
     private var deadline: Date?
     private var phaseDuration = 0
@@ -87,10 +88,11 @@ final class PomodoroViewModel {
     private var currentSession: TimerSession?
     private var currentNoiseType: NoiseType = .brown
 
-    init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init, automaticTicks: Bool = true) {
+    init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init, automaticTicks: Bool = true, countdownFeedback: @escaping () -> Void = { HapticManager.shared.countdownTick() }) {
         self.defaults = defaults
         self.now = now
         self.automaticTicks = automaticTicks
+        self.countdownFeedback = countdownFeedback
         workMinutes = Self.setting(defaults, "workMinutes", fallback: 25, range: 5...90)
         shortBreakMinutes = Self.setting(defaults, "shortBreakMinutes", fallback: 5, range: 1...30)
         longBreakMinutes = Self.setting(defaults, "longBreakMinutes", fallback: 15, range: 5...60)
@@ -139,7 +141,11 @@ final class PomodoroViewModel {
     /// A deadline keeps the timer accurate after a delayed tick or suspension.
     func refresh() {
         guard isRunning, let deadline else { return }
+        let previous = secondsRemaining
         updateElapsed(until: deadline, at: now())
+        if hapticsEnabled, phase == .work, (1...5).contains(secondsRemaining), secondsRemaining < previous {
+            countdownFeedback()
+        }
         if secondsRemaining == 0 {
             stopTicking()
             advancePhase(completed: true)

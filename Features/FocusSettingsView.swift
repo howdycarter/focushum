@@ -3,7 +3,6 @@ import SwiftUI
 struct FocusSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var pomodoroVM: PomodoroViewModel
-    var isPremium: Bool
     @State private var showUpgrade = false
 
     var body: some View {
@@ -17,10 +16,10 @@ struct FocusSettingsView: View {
                         FHStepper(label: "Long Break", value: $pomodoroVM.longBreakMinutes, range: 5...60, step: 5)
                         FHStepper(label: "Sessions before Long Break", value: $pomodoroVM.sessionsBeforeLongBreak, range: 2...8, step: 1, unit: "sessions")
                     }
-                    .disabled(!isPremium)
+                    .disabled(!pomodoroVM.hasPremiumAccess)
                     .listRowBackground(Color.white.opacity(0.06))
 
-                    if !isPremium {
+                    if !pomodoroVM.hasPremiumAccess {
                         Section {
                             Button("Unlock custom durations with Pro") { showUpgrade = true }
                             Text("Free sessions use 25 minutes of focus, 5-minute breaks, and a 15-minute break after four completed sessions.")

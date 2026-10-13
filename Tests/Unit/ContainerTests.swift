@@ -467,6 +467,9 @@ final class TimerRecoveryTests: XCTestCase {
         })
         recovered.setModelContext(ModelContext(store))
         XCTAssertNotNil(recovered.errorMessage)
+        recovered.startOrResume()
+        XCTAssertFalse(recovered.isRunning, "Starting must not overwrite an unrecovered active session")
+        XCTAssertEqual(try ModelContext(store).fetch(FetchDescriptor<TimerSession>()).count, 1)
         failFetch = false
         recovered.retryHistorySave()
         XCTAssertNil(recovered.errorMessage)

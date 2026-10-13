@@ -143,6 +143,11 @@ final class PomodoroViewModel {
 
     func startOrResume(noiseType: NoiseType = .brown) {
         guard !isRunning else { return }
+        // Do not overwrite the durable recovery snapshot while its history lookup failed.
+        if modelContext != nil && !didRestoreSession {
+            retryHistorySave()
+            guard didRestoreSession else { return }
+        }
         recoveryMessage = nil
         currentNoiseType = noiseType
         if phase == .idle { setPhase(.work) }

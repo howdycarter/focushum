@@ -19,7 +19,6 @@ The provider verifies transactions, observes updates, restores Apple purchases, 
 ## Release gates still open
 
 - Choose and approve real pricing and create matching products in App Store Connect.
-- Replace the existing placeholder terms and privacy URLs with published app-specific pages.
 - Review the final privacy declarations for whichever optional integrations are enabled. The bundled manifest currently declares the app's private UserDefaults use; it does not replace App Store privacy answers.
 - Verify sound quality, audio route changes, interruptions, and background playback on a physical iPhone.
 - Sign the final build and perform a sandbox/TestFlight purchase and restore rehearsal before submission.
@@ -28,7 +27,7 @@ The app-specific icon prompt and provenance are in `AppIcon-Prompt.md`.
 
 ## Validation
 
-- Xcode 27 / iOS 27 simulator: 17 unit and local StoreKit integration tests passed. Coverage includes timer suspension, pause/resume history, skipped sessions, long breaks, saved settings, and the free/Pro duration boundary.
+- Xcode 27 / iOS 27 simulator: 20 unit and local StoreKit integration tests passed. Coverage includes timer suspension, pause/resume history, skipped sessions, long breaks, saved settings, and the free/Pro duration boundary.
 - StoreKit tests exercise localized products, actual test purchases, restoring into a fresh service, asynchronous refund revocation, and unknown-product rejection.
 - A generic iOS Release archive builds without a signing identity. Signing remains deferred.
 - Generated icons are opaque 1024 × 1024 assets; in-app logos use the full-resolution source and respect Reduce Motion.
@@ -36,3 +35,7 @@ The app-specific icon prompt and provenance are in `AppIcon-Prompt.md`.
 Local StoreKit success does not verify App Store Connect, Apple’s sandbox, or a production transaction. The RevenueCat path remains optional and needs its own configured-project validation if enabled.
 
 The setup wizard now writes public runtime service values into `Resources/Info.plist`, which `Config/ServiceConfiguration.swift` reads. The legacy ignored `Secrets.swift` is not compiled. Do not enter server secrets or private signing keys. XcodeGen preserves the local StoreKit fixture through `project.yml`.
+
+## Published support and privacy
+
+The app links to the [privacy policy](https://howdycarter.com/apps/focushum/privacy) and [Apple standard terms](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/). The [support page](https://howdycarter.com/apps/focushum/support) is ready for App Store Connect metadata. The privacy and support routes were checked live on October 13, 2026. These pages describe the default local build; enabling an optional service requires reviewing the policy and App Store declarations again.

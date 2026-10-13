@@ -57,6 +57,7 @@ struct HomeView: View {
                 noiseSection.padding(.bottom, 48)
             }
             .padding(.horizontal, 24)
+            .frame(maxWidth: 680)
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showHistory)  { HistoryView() }
@@ -208,6 +209,7 @@ struct HomeView: View {
 }
 
 struct FHTimerRingView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let progress: Double
     let timeString: String
     let accentColor: Color
@@ -221,10 +223,11 @@ struct FHTimerRingView: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 1), value: progress)
             Text(timeString)
-                .font(.system(size: 68, weight: .thin, design: .monospaced))
+                .font(.system(size: horizontalSizeClass == .regular ? 92 : 68, weight: .thin, design: .monospaced))
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(.white)
         }
-        .frame(maxWidth: 270)
+        .frame(maxWidth: horizontalSizeClass == .regular ? 400 : 270)
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Time remaining")

@@ -10,7 +10,6 @@ private final class AudioRenderState: @unchecked Sendable {
     var rainDropRemain: Int = 0
     var cafeBase: Float = 0.0
     var cafePhase: Float = 0.0
-    var volume: Float = 0.7
 }
 
 @Observable
@@ -20,13 +19,11 @@ final class NoiseGenerator {
 
     private var audioEngine: AVAudioEngine?
     private var sourceNode: AVAudioSourceNode?
-    private let renderState = AudioRenderState()
 
     func start(type: NoiseType, volume: Float = 0.7) {
         stop()
         currentType = type
-        renderState.volume = volume
-        buildEngine(type: type)
+        buildEngine(type: type, volume: volume)
     }
 
     func stop() {
@@ -37,14 +34,13 @@ final class NoiseGenerator {
     }
 
     func setVolume(_ v: Float) {
-        renderState.volume = max(0, min(1, v))
-        audioEngine?.mainMixerNode.outputVolume = renderState.volume
+        audioEngine?.mainMixerNode.outputVolume = max(0, min(1, v))
     }
 
-    private func buildEngine(type: NoiseType) {
+    private func buildEngine(type: NoiseType, volume: Float) {
         let engine = AVAudioEngine()
         let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
-        let state = renderState
+        let state = AudioRenderState()
         let noiseType = type
 
         let node = AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList in
@@ -58,7 +54,7 @@ final class NoiseGenerator {
                 case .rain:  sample = NoiseGenerator.rainSample(state: state)
                 case .cafe:  sample = NoiseGenerator.cafeSample(state: state)
                 }
-                let out = sample * state.volume
+                let out = max(-1, min(1, sample))
                 for buffer in abl {
                     buffer.mData!.assumingMemoryBound(to: Float.self)[frame] = out
                 }
@@ -68,7 +64,7 @@ final class NoiseGenerator {
 
         engine.attach(node)
         engine.connect(node, to: engine.mainMixerNode, format: format)
-        engine.mainMixerNode.outputVolume = renderState.volume
+        engine.mainMixerNode.outputVolume = max(0, min(1, volume))
 
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])

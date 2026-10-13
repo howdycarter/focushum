@@ -7,6 +7,10 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
+    @Environment(\.container) private var container
+    @State private var hasPremium = false
+    @State private var showUpgrade = false
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @State private var pomodoroVM = PomodoroViewModel()
     @State private var audioVM    = AudioViewModel()
@@ -44,7 +48,7 @@ struct HomeView: View {
 
                 FHSessionDotsView(
                     completed: pomodoroVM.completedSessions,
-                    total: pomodoroVM.sessionsBeforeLongBreak
+                    total: pomodoroVM.sessionGoal
                 )
                 .padding(.bottom, 32)
 
@@ -53,11 +57,29 @@ struct HomeView: View {
                 noiseSection.padding(.bottom, 48)
             }
             .padding(.horizontal, 24)
+            .frame(maxWidth: 680)
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showHistory)  { HistoryView() }
         .sheet(isPresented: $showSettings) { FocusSettingsView(pomodoroVM: pomodoroVM) }
-        .onAppear { pomodoroVM.setModelContext(modelContext) }
+        .sheet(isPresented: $showUpgrade) { PaywallView() }
+        .onAppear {
+            pomodoroVM.setModelContext(modelContext)
+            if !container.config.featureFlags.paywall {
+                hasPremium = true
+                pomodoroVM.hasPremiumAccess = true
+            }
+        }
+        .task { await container.purchasesService.refreshSubscriptionStatus() }
+        .onReceive(NotificationCenter.default.publisher(for: .subscriptionDidChange)) { notification in
+            hasPremium = PremiumAccess.resolve(current: hasPremium, notification: notification,
+                                               paywallEnabled: container.config.featureFlags.paywall)
+            pomodoroVM.hasPremiumAccess = hasPremium
+            if !hasPremium && audioVM.selectedNoise.isPremium { audioVM.selectedNoise = .brown }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { pomodoroVM.refresh() }
+        }
         .onChange(of: pomodoroVM.phase) { _, newPhase in
             audioVM.isBreakPhase = newPhase.isBreak
         }
@@ -65,11 +87,14 @@ struct HomeView: View {
 
     private var topBar: some View {
         HStack {
-            Button { showHistory = true } label: {
+            Button { if hasPremium { showHistory = true } else { showUpgrade = true } } label: {
                 Image(systemName: "chart.bar.fill")
                     .font(.system(size: 18))
                     .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Session history")
             Spacer()
             Text("FocusHum")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
@@ -79,7 +104,10 @@ struct HomeView: View {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 18))
                     .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Timer settings")
         }
         .padding(.top, 16)
         .padding(.bottom, 8)
@@ -94,11 +122,16 @@ struct HomeView: View {
                 Image(systemName: "forward.end.fill")
                     .font(.system(size: 22))
                     .foregroundStyle(.white.opacity(0.6))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Skip current session")
+            .disabled(pomodoroVM.phase == .idle)
 
             Button {
                 if pomodoroVM.isRunning {
                     pomodoroVM.pause()
+                    audioVM.stop()
                 } else {
                     pomodoroVM.startOrResume(noiseType: audioVM.selectedNoise)
                     if !audioVM.isPlaying { audioVM.play() }
@@ -113,6 +146,8 @@ struct HomeView: View {
                     .shadow(color: .white.opacity(0.15), radius: 20)
             }
 
+            .accessibilityLabel(pomodoroVM.isRunning ? "Pause timer" : "Start timer")
+
             Button {
                 pomodoroVM.reset()
                 audioVM.stop()
@@ -120,7 +155,10 @@ struct HomeView: View {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 22))
                     .foregroundStyle(.white.opacity(0.6))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Reset timer")
         }
     }
 
@@ -131,7 +169,8 @@ struct HomeView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(.white.opacity(0.4))
                 Slider(value: $audioVM.volume, in: 0...1)
-                    .tint(Color(hex: "#8B5E3C") ?? .orange)
+                    .accessibilityLabel("Sound volume")
+                    .tint(Color(hex: "#C9976B") ?? .orange)
                 Image(systemName: "speaker.wave.3.fill")
                     .font(.system(size: 13))
                     .foregroundStyle(.white.opacity(0.4))
@@ -144,8 +183,9 @@ struct HomeView: View {
                         FHNoisePill(
                             noise: noise,
                             isSelected: audioVM.selectedNoise == noise,
-                            isPremiumLocked: false
+                            isPremiumLocked: noise.isPremium && !hasPremium
                         ) {
+                            guard !noise.isPremium || hasPremium else { showUpgrade = true; return }
                             audioVM.selectedNoise = noise
                             if !audioVM.isPlaying && pomodoroVM.isRunning { audioVM.play() }
                         }
@@ -158,17 +198,18 @@ struct HomeView: View {
 
     private var backgroundAccent: Color {
         switch pomodoroVM.phase {
-        case .idle, .work: return Color(hex: "#8B5E3C") ?? .orange
+        case .idle, .work: return Color(hex: "#C9976B") ?? .orange
         case .shortBreak, .longBreak: return Color(hex: "#5B9BD5") ?? .blue
         }
     }
 
     private var ringColor: Color {
-        pomodoroVM.phase.isBreak ? (Color(hex: "#5B9BD5") ?? .blue) : (Color(hex: "#8B5E3C") ?? .orange)
+        pomodoroVM.phase.isBreak ? (Color(hex: "#5B9BD5") ?? .blue) : (Color(hex: "#C9976B") ?? .orange)
     }
 }
 
 struct FHTimerRingView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let progress: Double
     let timeString: String
     let accentColor: Color
@@ -182,10 +223,15 @@ struct FHTimerRingView: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 1), value: progress)
             Text(timeString)
-                .font(.system(size: 68, weight: .thin, design: .monospaced))
+                .font(.system(size: horizontalSizeClass == .regular ? 92 : 68, weight: .thin, design: .monospaced))
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(.white)
         }
-        .frame(width: 270, height: 270)
+        .frame(maxWidth: horizontalSizeClass == .regular ? 400 : 270)
+        .aspectRatio(1, contentMode: .fit)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Time remaining")
+        .accessibilityValue(timeString)
     }
 }
 
@@ -196,7 +242,7 @@ struct FHSessionDotsView: View {
         HStack(spacing: 8) {
             ForEach(0..<total, id: \.self) { i in
                 Circle()
-                    .fill(i < completed % total ? (Color(hex: "#8B5E3C") ?? .orange) : Color.white.opacity(0.18))
+                    .fill(i < completed % total ? (Color(hex: "#C9976B") ?? .orange) : Color.white.opacity(0.18))
                     .frame(width: 8, height: 8)
                     .animation(.easeInOut, value: completed)
             }
@@ -220,10 +266,13 @@ struct FHNoisePill: View {
             }
             .foregroundStyle(isSelected ? .black : .white.opacity(isPremiumLocked ? 0.4 : 0.8))
             .padding(.horizontal, 16)
-            .padding(.vertical, 9)
-            .background(isSelected ? (Color(hex: "#8B5E3C") ?? .orange) : Color.white.opacity(0.1))
+            .frame(minHeight: 44)
+            .background(isSelected ? (Color(hex: "#C9976B") ?? .orange) : Color.white.opacity(0.1))
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(noise.rawValue)
+        .accessibilityHint(isPremiumLocked ? "Requires FocusHum Pro" : "Select focus sound")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

@@ -17,14 +17,14 @@
 /* Onboarding */
 "onb.welcome.title" = "Deep Focus, On Demand";
 "onb.welcome.subtitle" = "Brown noise and a Pomodoro timer designed to help you get into flow state.";
-"onb.build.title" = "Science-Backed Sounds";
-"onb.build.subtitle" = "Brown noise masks distractions and improves concentration for deep work.";
+"onb.build.title" = "Find Your Focus Sound";
+"onb.build.subtitle" = "Choose brown, pink, white, rain, or café sounds to create your own focus space.";
 "onb.launch.title" = "Built-in Pomodoro Timer";
 "onb.launch.subtitle" = "25-minute focus sessions with short breaks. Track your daily progress.";
 "onb.next" = "Next";
 "onb.getstarted" = "Start Focusing";
 "onb.next.access" = "Advance onboarding";
-"onb.highlights.title" = "Why FocusHum Works";
+"onb.highlights.title" = "Make Space to Focus";
 "onb.highlights.subtitle" = "Everything you need for deep focus";
 "onb.minimal.title" = "Ready to focus";
 "onb.minimal.subtitle" = "Start your first session now.";
@@ -80,9 +80,9 @@
 
 /* Paywall */
 "paywall.title" = "Unlock FocusHum Pro";
-"paywall.benefit.1" = "All 5 ambient sound types";
-"paywall.benefit.2" = "Unlimited focus sessions";
-"paywall.benefit.3" = "Session history & streaks";
+"paywall.benefit.1" = "Pink, rain, and café focus sounds";
+"paywall.benefit.2" = "Session history and focus statistics";
+"paywall.benefit.3" = "Custom focus and break durations";
 "paywall.benefit.4" = "Custom timer durations";
 "paywall.benefit.5" = "No ads, ever";
 "paywall.allplans" = "Show all plans";

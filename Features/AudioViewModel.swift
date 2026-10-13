@@ -6,12 +6,12 @@ final class AudioViewModel {
     var selectedNoise: NoiseType = .brown {
         didSet {
             guard isPlaying else { return }
-            generator.start(type: selectedNoise, volume: Float(volume))
+            generator.start(type: selectedNoise, volume: Float(volume) * currentFactor)
         }
     }
 
     var volume: Double = 0.7 {
-        didSet { generator.setVolume(Float(volume)) }
+        didSet { applyAdaptiveVolume() }
     }
 
     var isPlaying: Bool { generator.isPlaying }

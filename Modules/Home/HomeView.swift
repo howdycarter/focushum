@@ -8,6 +8,7 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.container) private var container
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var hasPremium = false
     @State private var showUpgrade = false
     @Environment(\.scenePhase) private var scenePhase
@@ -29,35 +30,15 @@ struct HomeView: View {
             .ignoresSafeArea()
             .animation(.easeInOut(duration: 1.2), value: pomodoroVM.phase)
 
-            VStack(spacing: 0) {
-                topBar
-                Spacer()
-
-                Text(pomodoroVM.phase.label.uppercased())
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .tracking(3)
-                    .animation(.easeInOut, value: pomodoroVM.phase)
-
-                FHTimerRingView(
-                    progress: pomodoroVM.progress,
-                    timeString: pomodoroVM.timeString,
-                    accentColor: ringColor
-                )
-                .padding(.vertical, 24)
-
-                FHSessionDotsView(
-                    completed: pomodoroVM.completedSessions,
-                    total: pomodoroVM.sessionGoal
-                )
-                .padding(.bottom, 32)
-
-                controlRow
-                Spacer()
-                noiseSection.padding(.bottom, 48)
+            GeometryReader { geometry in
+                ScrollView {
+                    focusContent
+                        .frame(maxWidth: 680)
+                        .frame(minHeight: geometry.size.height)
+                        .frame(maxWidth: .infinity)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.horizontal, 24)
-            .frame(maxWidth: 680)
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showHistory)  { HistoryView() }
@@ -85,32 +66,82 @@ struct HomeView: View {
         }
     }
 
+    private var focusContent: some View {
+        VStack(spacing: 0) {
+            topBar
+            Spacer(minLength: 24)
+
+            Text(pomodoroVM.phase.label.uppercased())
+                .font(.system(.footnote, design: .monospaced, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.5))
+                .tracking(3)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .animation(.easeInOut, value: pomodoroVM.phase)
+
+            FHTimerRingView(
+                progress: pomodoroVM.progress,
+                timeString: pomodoroVM.timeString,
+                accentColor: ringColor
+            )
+            .padding(.vertical, 24)
+
+            FHSessionDotsView(
+                completed: pomodoroVM.completedSessions,
+                total: pomodoroVM.sessionGoal
+            )
+            .padding(.bottom, 32)
+
+            controlRow
+            Spacer(minLength: 32)
+            noiseSection.padding(.bottom, 48)
+        }
+        .padding(.horizontal, 24)
+    }
+
     private var topBar: some View {
-        HStack {
-            Button { if hasPremium { showHistory = true } else { showUpgrade = true } } label: {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+        VStack(spacing: 8) {
+            if dynamicTypeSize.isAccessibilitySize { appTitle }
+            HStack {
+                historyButton
+                Spacer()
+                if !dynamicTypeSize.isAccessibilitySize {
+                    appTitle
+                    Spacer()
+                }
+                settingsButton
             }
-            .accessibilityLabel("Session history")
-            Spacer()
-            Text("FocusHum")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-            Spacer()
-            Button { showSettings = true } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Timer settings")
         }
         .padding(.top, 16)
         .padding(.bottom, 8)
+    }
+
+    private var appTitle: some View {
+        Text("FocusHum")
+            .font(.system(.headline, design: .rounded))
+            .foregroundStyle(.white)
+    }
+
+    private var historyButton: some View {
+        Button { if hasPremium { showHistory = true } else { showUpgrade = true } } label: {
+            Image(systemName: "chart.bar.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Session history")
+    }
+
+    private var settingsButton: some View {
+        Button { showSettings = true } label: {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Timer settings")
     }
 
     private var controlRow: some View {
@@ -210,11 +241,48 @@ struct HomeView: View {
 
 struct FHTimerRingView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var phoneFontSize = 68.0
+    @ScaledMetric(relativeTo: .largeTitle) private var tabletFontSize = 92.0
+    @ScaledMetric(relativeTo: .largeTitle) private var phoneRingSize = 270.0
+    @ScaledMetric(relativeTo: .largeTitle) private var tabletRingSize = 400.0
     let progress: Double
     let timeString: String
     let accentColor: Color
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 16) {
+                    ring.frame(width: 120, height: 120)
+                    Text(timeString)
+                        .font(.system(size: horizontalSizeClass == .regular ? tabletFontSize : phoneFontSize,
+                                      weight: .regular, design: .monospaced))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.4)
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                ring.overlay {
+                    Text(timeString)
+                        .font(.system(size: horizontalSizeClass == .regular ? tabletFontSize : phoneFontSize,
+                                      weight: .thin, design: .monospaced))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(.white)
+                        .padding(24)
+                }
+                .frame(maxWidth: horizontalSizeClass == .regular ? tabletRingSize : phoneRingSize)
+                .aspectRatio(1, contentMode: .fit)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Time remaining")
+        .accessibilityValue(timeString)
+    }
+
+    private var ring: some View {
         ZStack {
             Circle().stroke(Color.white.opacity(0.08), lineWidth: 10)
             Circle()
@@ -222,16 +290,7 @@ struct FHTimerRingView: View {
                 .stroke(accentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 1), value: progress)
-            Text(timeString)
-                .font(.system(size: horizontalSizeClass == .regular ? 92 : 68, weight: .thin, design: .monospaced))
-                .minimumScaleFactor(0.7)
-                .foregroundStyle(.white)
         }
-        .frame(maxWidth: horizontalSizeClass == .regular ? 400 : 270)
-        .aspectRatio(1, contentMode: .fit)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Time remaining")
-        .accessibilityValue(timeString)
     }
 }
 
@@ -260,12 +319,14 @@ struct FHNoisePill: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: isPremiumLocked ? "lock.fill" : noise.icon)
-                    .font(.system(size: 13))
+                    .font(.caption)
                 Text(noise.rawValue)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.subheadline.weight(.medium))
             }
+            .fixedSize()
             .foregroundStyle(isSelected ? .black : .white.opacity(isPremiumLocked ? 0.4 : 0.8))
             .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .frame(minHeight: 44)
             .background(isSelected ? (Color(hex: "#C9976B") ?? .orange) : Color.white.opacity(0.1))
             .clipShape(Capsule())

@@ -3,6 +3,7 @@ import SwiftData
 
 struct HistoryView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: \TimerSession.startDate, order: .reverse) private var sessions: [TimerSession]
 
     private var completedWork: [TimerSession] {
@@ -36,7 +37,7 @@ struct HistoryView: View {
                 Color.black.ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 24) {
-                        HStack(spacing: 16) {
+                        statsLayout {
                             FHStatCard(value: "\(currentStreak)", label: "Day Streak", icon: "flame.fill")
                             FHStatCard(value: "\(completedWork.count)", label: "Sessions", icon: "checkmark.circle.fill")
                             FHStatCard(value: "\(totalFocusMinutes)m", label: "Focus Time", icon: "timer")
@@ -78,6 +79,12 @@ struct HistoryView: View {
         }
         .preferredColorScheme(.dark)
     }
+
+    private var statsLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 16))
+    }
 }
 
 struct FHStatCard: View {
@@ -91,20 +98,24 @@ struct FHStatCard: View {
                 .font(.system(size: 20))
                 .foregroundStyle(Color(hex: "#8B5E3C") ?? .orange)
             Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(.white)
             Text(label)
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundStyle(.white.opacity(0.4))
         }
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity)
         .padding(16)
         .background(Color.white.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
     }
 }
 
 struct FHWeekBarChart: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let sessions: [TimerSession]
 
     private struct DayData: Identifiable {
@@ -129,19 +140,32 @@ struct FHWeekBarChart: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("This Week").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white.opacity(0.5))
-            HStack(alignment: .bottom, spacing: 8) {
-                ForEach(weekData) { day in
-                    VStack(spacing: 6) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(day.minutes > 0 ? (Color(hex: "#8B5E3C") ?? .orange) : Color.white.opacity(0.08))
-                            .frame(height: CGFloat(day.minutes) / CGFloat(maxMinutes) * 80 + 4)
-                        Text(day.label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.4))
+            Text("This Week").font(.subheadline.weight(.semibold)).foregroundStyle(.white.opacity(0.5))
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(weekData) { day in
+                        Text("\(day.label): \(day.minutes) minutes")
+                            .font(.body)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(maxWidth: .infinity)
                 }
+            } else {
+                HStack(alignment: .bottom, spacing: 8) {
+                    ForEach(weekData) { day in
+                        VStack(spacing: 6) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(day.minutes > 0 ? (Color(hex: "#8B5E3C") ?? .orange) : Color.white.opacity(0.08))
+                                .frame(height: CGFloat(day.minutes) / CGFloat(maxMinutes) * 80 + 4)
+                            Text(day.label).font(.caption2).foregroundStyle(.white.opacity(0.4))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(day.label), \(day.minutes) focus minutes")
+                    }
+                }
+                .frame(minHeight: 110, alignment: .bottom)
             }
-            .frame(height: 110, alignment: .bottom)
         }
         .padding(16)
         .background(Color.white.opacity(0.06))
@@ -150,27 +174,33 @@ struct FHWeekBarChart: View {
 }
 
 struct FHSessionRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let session: TimerSession
     var body: some View {
-        HStack(spacing: 14) {
+        rowLayout {
             Image(systemName: session.completed ? "checkmark.circle.fill" : "xmark.circle")
                 .foregroundStyle(session.completed ? (Color(hex: "#8B5E3C") ?? .orange) : .white.opacity(0.3))
                 .font(.system(size: 20))
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 8) {
-                    Text(session.sessionKind.label).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
-                    Text("·").foregroundStyle(.white.opacity(0.3))
-                    Text(session.noiseType.rawValue).font(.system(size: 13)).foregroundStyle(.white.opacity(0.5))
-                }
+                Text("\(session.sessionKind.label) · \(session.noiseType.rawValue)")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                 Text(session.startDate.formatted(date: .abbreviated, time: .shortened))
-                    .font(.system(size: 12)).foregroundStyle(.white.opacity(0.35))
+                    .font(.caption).foregroundStyle(.white.opacity(0.35))
             }
-            Spacer()
+            .fixedSize(horizontal: false, vertical: true)
+            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
             Text("\(Int(session.elapsedSeconds / 60))m")
-                .font(.system(size: 14, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(0.6))
+                .font(.system(.subheadline, design: .monospaced, weight: .medium)).foregroundStyle(.white.opacity(0.6))
+                .fixedSize()
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
         .background(Color.white.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var rowLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 14))
     }
 }

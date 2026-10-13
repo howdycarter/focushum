@@ -22,6 +22,7 @@ targets:
       - path: Config
         excludes:
           - Secrets.sample.swift
+          - Secrets.swift
       - path: Core
       - path: Modules
       - path: Backend
@@ -29,6 +30,8 @@ targets:
           - "**/*.md"
           - "**/*.txt"
           - "**/Python/**"
+          - "**/*.sql"
+          - "**/*.ts"
       - path: Resources
         excludes:
           - Info.plist
@@ -51,6 +54,10 @@ targets:
         - name: FocusHumTests
 
   FocusHumTests:
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.focushum.app.tests
     type: bundle.unit-test
     platform: iOS
     sources:

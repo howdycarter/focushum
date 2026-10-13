@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AB0123456789012345678911 /* FocusHum.storekit in Resources */ = {isa = PBXBuildFile; fileRef = AB0123456789012345678912 /* FocusHum.storekit */; };
+		AB0123456789012345678901 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AB0123456789012345678902 /* PrivacyInfo.xcprivacy */; };
 		037A2060A4FA328665DAA61D /* NotificationsDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16EDFB485EB40F73F6EFEAB /* NotificationsDebugView.swift */; };
 		0C37424BB10A1F9460BE3DDF /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 0F369C0D1A4DAFCCC35EADA6 /* README.md */; };
 		0E9B1C14C4AEB37D73C3827C /* LocalCoreDataRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A4CB9B86726C1388BC3376 /* LocalCoreDataRepository.swift */; };
@@ -68,7 +70,7 @@
 		A7944D35CA1E24452F498A2D /* ContainerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C378C3AD7FF4DBC24618B60E /* ContainerTests.swift */; };
 		AC0047572714A786DE799A2A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AEAFCBCC7B63C4968B62F56 /* RootView.swift */; };
 		AFFAC6BFA2F0E98A4208405B /* AnimatedBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F67EA36D17109236490ADC8 /* AnimatedBackground.swift */; };
-		B304D914FB0C1B2513B9B6F8 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F0FB28D4A8DE36E175E38ED /* Secrets.swift */; };
+		B304D914FB0C1B2513B9B6F8 /* ServiceConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F0FB28D4A8DE36E175E38ED /* ServiceConfiguration.swift */; };
 		B7CFFD71906475344069568D /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = D5A0CE030CDA86805C04F6F0 /* Supabase */; };
 		C08C326BA7B9877A14D69445 /* CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6649A86F42E434BB729E4480 /* CacheManager.swift */; };
 		CAFCBA521D1B3796C0850FFA /* TheSwiftKitApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4AA1601308981470B6E3B6 /* TheSwiftKitApp.swift */; };
@@ -105,6 +107,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		AB0123456789012345678912 /* FocusHum.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = FocusHum.storekit; path = Tests/Fixtures/FocusHum.storekit; sourceTree = SOURCE_ROOT; };
+		AB0123456789012345678902 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0464404E8B36AEBFA5EC52AE /* MinimalOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalOnboardingView.swift; sourceTree = "<group>"; };
 		062A5715E614FB605F80151B /* OnboardingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCoordinator.swift; sourceTree = "<group>"; };
 		064985B85B929CDEC1565DC9 /* OnboardingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingModels.swift; sourceTree = "<group>"; };
@@ -150,7 +154,7 @@
 		78AC3DB772E77F4D91A03EC1 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		7989E1FBBE107E4F26A817CC /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		7CBE321FBCEC1B64E9E55FA1 /* CachedProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedProfileRepository.swift; sourceTree = "<group>"; };
-		7F0FB28D4A8DE36E175E38ED /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		7F0FB28D4A8DE36E175E38ED /* ServiceConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceConfiguration.swift; sourceTree = "<group>"; };
 		81791112D129A49C4E798584 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Localizable.strings; sourceTree = "<group>"; };
 		84836EF84116FE5B50CC080B /* CachedSubscriptionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedSubscriptionRepository.swift; sourceTree = "<group>"; };
 		8DC03817AB448895C3FC6557 /* CarouselOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselOnboardingView.swift; sourceTree = "<group>"; };
@@ -233,6 +237,7 @@
 		2EF81C2526321FF0281504BD /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				AB0123456789012345678902 /* PrivacyInfo.xcprivacy */,
 				B842FA924DDEC188BDADBAF8 /* Assets.xcassets */,
 				EE678C7A0300B516849E5A67 /* LaunchScreen.storyboard */,
 				79E7971BA76C881886055619 /* Localizable.strings */,
@@ -277,7 +282,7 @@
 			children = (
 				5ED4E9C2CCDA7325F5027362 /* AppConfig.swift */,
 				40E46C534BBACE5F6F8BDC2E /* FeatureFlags.swift */,
-				7F0FB28D4A8DE36E175E38ED /* Secrets.swift */,
+				7F0FB28D4A8DE36E175E38ED /* ServiceConfiguration.swift */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -574,6 +579,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F90FB245824F264874D109E5 /* Build configuration list for PBXNativeTarget "FocusHumTests" */;
 			buildPhases = (
+				AB0123456789012345678913 /* Test Resources */,
 				F185CDBF7F98777BB1D543DC /* Sources */,
 			);
 			buildRules = (
@@ -645,18 +651,15 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		AB0123456789012345678913 /* Test Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB0123456789012345678911 /* FocusHum.storekit in Resources */); runOnlyForDeploymentPostprocessing = 0; };
 		98E20576F44474AEC61361D9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E09F86DC72D9339E7883B47C /* 001_user_subscriptions.sql in Resources */,
-				93587742D91C8E20297655F0 /* 002_user_subscriptions_enhancements.sql in Resources */,
 				E9067DE92BDC0B4DFF659AA2 /* Assets.xcassets in Resources */,
 				7D70D8B4CF5CDF67955691AC /* LaunchScreen.storyboard in Resources */,
+				AB0123456789012345678901 /* PrivacyInfo.xcprivacy in Resources */,
 				55C0CCA14AC4462571250857 /* Localizable.strings in Resources */,
-				0C37424BB10A1F9460BE3DDF /* README.md in Resources */,
-				36F5F048B0ABD3B976686F6B /* setup.sql in Resources */,
-				DA63AE8421B129C50A431FE1 /* user_subscriptions_webhook.ts in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -726,7 +729,7 @@
 				3E6951EA323428E3895DCF7D /* RatingService.swift in Sources */,
 				6F405EF4EF633B6BE66DB68D /* RevenueCatPurchasesService.swift in Sources */,
 				AC0047572714A786DE799A2A /* RootView.swift in Sources */,
-				B304D914FB0C1B2513B9B6F8 /* Secrets.swift in Sources */,
+				B304D914FB0C1B2513B9B6F8 /* ServiceConfiguration.swift in Sources */,
 				D4EB2AF927FA65576FD31A58 /* SettingsView.swift in Sources */,
 				83DFCA443C9BFE9E1267F873 /* SettingsViewModel.swift in Sources */,
 				503789F078C2503E3BD3797E /* SignInView.swift in Sources */,
@@ -777,6 +780,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.focushum.app.tests;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -947,6 +952,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.focushum.app.tests;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

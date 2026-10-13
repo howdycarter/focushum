@@ -1,0 +1,74 @@
+{
+  "identifier": "46b1d339-30cb-4751-9fb2-0e78e7fd3375",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "10000000",
+      "localizations": [
+        {
+          "description": "Local test subscription group",
+          "displayName": "FocusHum Pro",
+          "locale": "en_US"
+        }
+      ],
+      "name": "FocusHum Pro",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "9.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "10000001",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Local test product. Price is not approved for publication.",
+              "displayName": "FocusHum Pro Monthly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.focushum.app.pro.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "FocusHum Pro Monthly (Test)",
+          "subscriptionGroupID": "10000000",
+          "type": "RecurringSubscription",
+          "winBackOffers": []
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "79.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "10000002",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Local test product. Price is not approved for publication.",
+              "displayName": "FocusHum Pro Yearly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.focushum.app.pro.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "FocusHum Pro Yearly (Test)",
+          "subscriptionGroupID": "10000000",
+          "type": "RecurringSubscription",
+          "winBackOffers": []
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

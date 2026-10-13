@@ -53,6 +53,7 @@
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>
+      <StoreKitConfigurationFileReference identifier="../../Tests/Fixtures/FocusHum.storekit"/>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -76,6 +77,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
       </CommandLineArguments>
+      <StoreKitConfigurationFileReference identifier="../../Tests/Fixtures/FocusHum.storekit"/>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

@@ -29,7 +29,7 @@ public enum DS {
     // =================================================================
 
     public static let primaryHex: String = "#1C1008"
-    public static let accentHex: String  = "#8B5E3C"
+    public static let accentHex: String  = "#C9976B"
 
     // =================================================================
     // NEUTRAL PALETTE

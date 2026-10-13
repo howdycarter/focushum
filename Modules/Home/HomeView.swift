@@ -260,7 +260,7 @@ struct FHTimerRingView: View {
                                       weight: .regular, design: .monospaced))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.4)
                 }
                 .frame(maxWidth: .infinity)
             } else {

@@ -265,3 +265,223 @@ final class StoreKitPurchaseTests: XCTestCase {
         }
     }
 }
+
+
+@MainActor
+final class AudioLifecycleTests: XCTestCase {
+    private final class Playback: AudioPlayback {
+        var isPlaying = false
+        var startCount = 0
+        var volume: Float = 0
+        var failStart = false
+        func start(type: NoiseType, volume: Float) throws {
+            startCount += 1
+            if failStart { throw NSError(domain: "AudioTest", code: 1) }
+            self.volume = volume
+            isPlaying = true
+        }
+        func stop() { isPlaying = false }
+        func setVolume(_ volume: Float) { self.volume = volume }
+    }
+
+    func testInterruptionResumesOnlyWhenSystemAllowsIt() {
+        let playback = Playback()
+        let model = AudioViewModel(generator: playback, observeNotifications: false)
+        model.play()
+        model.interruptionBegan()
+        model.interruptionBegan() // Repeated begin notifications preserve prior playback intent.
+        XCTAssertFalse(model.isPlaying)
+        model.interruptionEnded(shouldResume: true)
+        XCTAssertTrue(model.isPlaying)
+        XCTAssertEqual(playback.startCount, 2)
+        model.interruptionBegan()
+        model.interruptionEnded(shouldResume: false)
+        XCTAssertFalse(model.isPlaying)
+        XCTAssertNotNil(model.errorMessage)
+    }
+
+    func testManualStopDuringInterruptionPreventsUnexpectedResume() {
+        let playback = Playback()
+        let model = AudioViewModel(generator: playback, observeNotifications: false)
+        model.play()
+        model.interruptionBegan()
+        model.stop()
+        model.interruptionEnded(shouldResume: true)
+        XCTAssertFalse(model.isPlaying)
+        XCTAssertEqual(playback.startCount, 1)
+    }
+
+    func testHeadphoneDisconnectDoesNotSwitchToSpeakerAutomatically() {
+        let playback = Playback()
+        let model = AudioViewModel(generator: playback, observeNotifications: false)
+        model.play()
+        model.routeDisconnected()
+        XCTAssertFalse(model.isPlaying)
+        XCTAssertNotNil(model.errorMessage)
+        model.interruptionEnded(shouldResume: true)
+        XCTAssertEqual(playback.startCount, 1)
+        model.play()
+        XCTAssertTrue(model.isPlaying)
+        XCTAssertNil(model.errorMessage)
+    }
+
+    func testAudioFailureCanBeRetriedAndBreakVolumeIsApplied() {
+        let playback = Playback()
+        playback.failStart = true
+        let model = AudioViewModel(generator: playback, observeNotifications: false)
+        model.play()
+        XCTAssertFalse(model.isPlaying)
+        XCTAssertNotNil(model.errorMessage)
+        playback.failStart = false
+        model.isBreakPhase = true
+        model.volume = 0.8
+        model.play()
+        XCTAssertTrue(model.isPlaying)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(playback.volume, 0.44, accuracy: 0.001)
+    }
+
+    func testMediaResetAndStoppedEngineExposeRecovery() {
+        let playback = Playback()
+        let model = AudioViewModel(generator: playback, observeNotifications: false)
+        model.play()
+        model.audioConfigurationChanged()
+        XCTAssertTrue(model.isPlaying, "A notification from a still-running engine must not stop playback")
+        playback.isPlaying = false
+        model.audioConfigurationChanged()
+        XCTAssertFalse(model.isPlaying)
+        XCTAssertNotNil(model.errorMessage)
+        model.play()
+        model.audioSystemReset()
+        XCTAssertFalse(model.isPlaying)
+        XCTAssertNotNil(model.errorMessage)
+    }
+}
+
+@MainActor
+final class TimerRecoveryTests: XCTestCase {
+    private final class Clock { var date = Date(timeIntervalSince1970: 1_700_000_000) }
+    private func defaults() -> UserDefaults {
+        let value = UserDefaults(suiteName: "FocusHumRecovery.\(UUID().uuidString)")!
+        value.set(false, forKey: "hapticsEnabled")
+        return value
+    }
+    private func context() throws -> ModelContainer {
+        try ModelContainer(for: TimerSession.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    }
+    private func timer(_ defaults: UserDefaults, _ clock: Clock, _ context: ModelContext) -> PomodoroViewModel {
+        let timer = PomodoroViewModel(defaults: defaults, now: { clock.date }, automaticTicks: false)
+        timer.setModelContext(context)
+        return timer
+    }
+
+    func testRunningSessionRecoversPausedWithoutDuplicateHistory() throws {
+        let clock = Clock(), settings = defaults(), store = try context()
+        let original = timer(settings, clock, store.mainContext)
+        original.startOrResume()
+        clock.date.addTimeInterval(90)
+        let recovered = timer(settings, clock, ModelContext(store))
+        XCTAssertFalse(recovered.isRunning)
+        XCTAssertEqual(recovered.secondsRemaining, 1_410)
+        XCTAssertNotNil(recovered.recoveryMessage)
+        recovered.startOrResume()
+        clock.date.addTimeInterval(10)
+        recovered.reset()
+        let sessions = try ModelContext(store).fetch(FetchDescriptor<TimerSession>())
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions[0].elapsedSeconds, 100)
+        XCTAssertNotNil(sessions[0].endDate)
+    }
+
+    func testPausedSessionDoesNotAccumulateClosedTime() throws {
+        let clock = Clock(), settings = defaults(), store = try context()
+        let original = timer(settings, clock, store.mainContext)
+        original.startOrResume()
+        clock.date.addTimeInterval(30)
+        original.pause()
+        clock.date.addTimeInterval(3_600)
+        let recovered = timer(settings, clock, ModelContext(store))
+        XCTAssertEqual(recovered.secondsRemaining, 1_470)
+        XCTAssertFalse(recovered.isRunning)
+    }
+
+    func testExpiredSessionCompletesOnceWithoutStartingNewSession() throws {
+        let clock = Clock(), settings = defaults(), store = try context()
+        settings.set(true, forKey: "autoStartBreaks")
+        let original = timer(settings, clock, store.mainContext)
+        original.startOrResume()
+        clock.date.addTimeInterval(3_600)
+        let recovered = timer(settings, clock, ModelContext(store))
+        XCTAssertEqual(recovered.completedSessions, 1)
+        XCTAssertEqual(recovered.phase, .shortBreak)
+        XCTAssertFalse(recovered.isRunning)
+        let again = timer(settings, clock, ModelContext(store))
+        XCTAssertEqual(again.phase, .shortBreak)
+        XCTAssertEqual(again.completedSessions, 1)
+        let sessions = try ModelContext(store).fetch(FetchDescriptor<TimerSession>())
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertTrue(sessions[0].completed)
+    }
+
+    func testLegacyUnfinishedSessionIsReconciled() throws {
+        let clock = Clock(), settings = defaults(), store = try context()
+        let session = TimerSession(startDate: clock.date, plannedDuration: 1_500, sessionKind: .work, noiseType: .brown)
+        session.elapsedSeconds = 60
+        store.mainContext.insert(session)
+        try store.mainContext.save()
+        let recovered = timer(settings, clock, ModelContext(store))
+        XCTAssertEqual(recovered.phase, .idle)
+        let saved = try XCTUnwrap(ModelContext(store).fetch(FetchDescriptor<TimerSession>()).first)
+        XCTAssertFalse(saved.completed)
+        XCTAssertNotNil(saved.endDate)
+        XCTAssertEqual(saved.elapsedSeconds, 60)
+        XCTAssertNotNil(recovered.recoveryMessage)
+    }
+
+    func testHistorySaveFailureIsVisibleAndRetryClearsIt() throws {
+        let clock = Clock(), settings = defaults(), store = try context()
+        var fail = true
+        let timer = PomodoroViewModel(defaults: settings, now: { clock.date }, automaticTicks: false, saveContext: { context in
+            if fail { throw NSError(domain: "SaveTest", code: 1) }
+            try context.save()
+        })
+        timer.setModelContext(store.mainContext)
+        timer.startOrResume()
+        XCTAssertNotNil(timer.errorMessage)
+        fail = false
+        timer.retryHistorySave()
+        XCTAssertNil(timer.errorMessage)
+        XCTAssertEqual(try ModelContext(store).fetch(FetchDescriptor<TimerSession>()).count, 1)
+    }
+
+
+    func testFailedRecoveryFetchRetriesRecoveryRatherThanOnlySaving() throws {
+        let clock = Clock(), settings = defaults(), store = try context()
+        let original = timer(settings, clock, store.mainContext)
+        original.startOrResume()
+        clock.date.addTimeInterval(60)
+        var failFetch = true
+        let recovered = PomodoroViewModel(defaults: settings, now: { clock.date }, automaticTicks: false, fetchSessions: { context in
+            if failFetch { throw NSError(domain: "FetchTest", code: 1) }
+            return try context.fetch(FetchDescriptor<TimerSession>())
+        })
+        recovered.setModelContext(ModelContext(store))
+        XCTAssertNotNil(recovered.errorMessage)
+        failFetch = false
+        recovered.retryHistorySave()
+        XCTAssertNil(recovered.errorMessage)
+        XCTAssertEqual(recovered.phase, .work)
+        XCTAssertEqual(recovered.secondsRemaining, 1_440)
+        XCTAssertFalse(recovered.isRunning)
+    }
+
+    func testResetRemovesRecoveryState() throws {
+        let clock = Clock(), settings = defaults(), store = try context()
+        let original = timer(settings, clock, store.mainContext)
+        original.startOrResume()
+        original.reset()
+        let recovered = timer(settings, clock, ModelContext(store))
+        XCTAssertEqual(recovered.phase, .idle)
+        XCTAssertNil(recovered.recoveryMessage)
+    }
+}

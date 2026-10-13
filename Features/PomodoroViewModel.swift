@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 
-enum PomodoroPhase {
+enum PomodoroPhase: String, Codable {
     case idle, work, shortBreak, longBreak
 
     var sessionKind: SessionKind {
@@ -63,6 +63,8 @@ final class PomodoroViewModel {
         didSet { defaults.set(hapticsEnabled, forKey: "hapticsEnabled") }
     }
 
+    var errorMessage: String?
+    private(set) var recoveryMessage: String?
     private(set) var phase: PomodoroPhase = .idle
     private(set) var secondsRemaining: Int = 0
     private(set) var completedSessions = 0
@@ -87,12 +89,27 @@ final class PomodoroViewModel {
     private var modelContext: ModelContext?
     private var currentSession: TimerSession?
     private var currentNoiseType: NoiseType = .brown
+    private let saveContext: (ModelContext) throws -> Void
+    private let fetchSessions: (ModelContext) throws -> [TimerSession]
+    private var didRestoreSession = false
+    private static let recoveryKey = "FocusHum.activeSession.v1"
 
-    init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init, automaticTicks: Bool = true, countdownFeedback: @escaping () -> Void = { HapticManager.shared.countdownTick() }) {
+    private struct RecoverySnapshot: Codable {
+        let sessionID: UUID?
+        let phase: PomodoroPhase
+        let phaseDuration: Int
+        let secondsRemaining: Int
+        let deadline: Date?
+        let completedSessions: Int
+    }
+
+    init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init, automaticTicks: Bool = true, countdownFeedback: @escaping () -> Void = { HapticManager.shared.countdownTick() }, saveContext: @escaping (ModelContext) throws -> Void = { try $0.save() }, fetchSessions: @escaping (ModelContext) throws -> [TimerSession] = { try $0.fetch(FetchDescriptor<TimerSession>()) }) {
         self.defaults = defaults
         self.now = now
         self.automaticTicks = automaticTicks
         self.countdownFeedback = countdownFeedback
+        self.saveContext = saveContext
+        self.fetchSessions = fetchSessions
         workMinutes = Self.setting(defaults, "workMinutes", fallback: 25, range: 5...90)
         shortBreakMinutes = Self.setting(defaults, "shortBreakMinutes", fallback: 5, range: 1...30)
         longBreakMinutes = Self.setting(defaults, "longBreakMinutes", fallback: 15, range: 5...60)
@@ -103,15 +120,36 @@ final class PomodoroViewModel {
         secondsRemaining = phaseDuration
     }
 
-    func setModelContext(_ context: ModelContext) { modelContext = context }
+    func setModelContext(_ context: ModelContext) {
+        modelContext = context
+        guard !didRestoreSession else { return }
+        didRestoreSession = true
+        restoreSession()
+    }
+
+    /// Save at lifecycle boundaries as well as user-driven transitions.
+    func checkpoint() {
+        refresh()
+        persistRecovery()
+        saveHistory()
+    }
+
+    func retryHistorySave() {
+        if !didRestoreSession {
+            didRestoreSession = true
+            restoreSession()
+        } else { saveHistory() }
+    }
 
     func startOrResume(noiseType: NoiseType = .brown) {
         guard !isRunning else { return }
+        recoveryMessage = nil
         currentNoiseType = noiseType
         if phase == .idle { setPhase(.work) }
         if currentSession == nil { saveSessionStart() }
         deadline = now().addingTimeInterval(TimeInterval(secondsRemaining))
         isRunning = true
+        persistRecovery()
         if hapticsEnabled { HapticManager.shared.sessionStart() }
         runTick()
     }
@@ -120,7 +158,8 @@ final class PomodoroViewModel {
         guard isRunning else { return }
         refresh()
         stopTicking()
-        try? modelContext?.save()
+        persistRecovery()
+        saveHistory()
     }
 
     func skip() {
@@ -136,6 +175,8 @@ final class PomodoroViewModel {
         finalizeSession(completed: false)
         completedSessions = 0
         setPhase(.idle)
+        recoveryMessage = nil
+        defaults.removeObject(forKey: Self.recoveryKey)
     }
 
     /// A deadline keeps the timer accurate after a delayed tick or suspension.
@@ -150,6 +191,7 @@ final class PomodoroViewModel {
             stopTicking()
             advancePhase(completed: true)
         }
+        persistRecovery()
     }
 
     private func updateElapsed(until deadline: Date, at date: Date) {
@@ -178,7 +220,7 @@ final class PomodoroViewModel {
         isRunning = false
     }
 
-    private func advancePhase(completed: Bool) {
+    private func advancePhase(completed: Bool, automaticallyStartNext: Bool = true) {
         if completed && hapticsEnabled { HapticManager.shared.sessionEnd() }
         finalizeSession(completed: completed)
         if phase == .work {
@@ -188,7 +230,8 @@ final class PomodoroViewModel {
         } else {
             setPhase(.work)
         }
-        if autoStartBreaks || phase == .work { startOrResume(noiseType: currentNoiseType) }
+        if automaticallyStartNext && (autoStartBreaks || phase == .work) { startOrResume(noiseType: currentNoiseType) }
+        persistRecovery()
     }
 
     private func setPhase(_ phase: PomodoroPhase) {
@@ -206,14 +249,83 @@ final class PomodoroViewModel {
         let session = TimerSession(startDate: now(), plannedDuration: TimeInterval(phaseDuration), sessionKind: phase.sessionKind, noiseType: currentNoiseType)
         modelContext.insert(session)
         currentSession = session
-        try? modelContext.save()
+        saveHistory()
     }
 
     private func finalizeSession(completed: Bool) {
         currentSession?.completed = completed
         currentSession?.endDate = now()
-        try? modelContext?.save()
+        saveHistory()
         currentSession = nil
+        defaults.removeObject(forKey: Self.recoveryKey)
+    }
+
+    private func saveHistory() {
+        guard let modelContext else { return }
+        do {
+            try saveContext(modelContext)
+            errorMessage = nil
+        } catch {
+            errorMessage = "Your session history could not be saved. Free up device storage and tap Retry Save. Keep the app open until it saves."
+        }
+    }
+
+    private func persistRecovery() {
+        guard phase != .idle else { return }
+        let snapshot = RecoverySnapshot(sessionID: currentSession?.id, phase: phase,
+            phaseDuration: phaseDuration, secondsRemaining: secondsRemaining,
+            deadline: isRunning ? deadline : nil, completedSessions: completedSessions)
+        if let data = try? JSONEncoder().encode(snapshot) {
+            defaults.set(data, forKey: Self.recoveryKey)
+        }
+    }
+
+    private func restoreSession() {
+        guard let modelContext else { return }
+        do {
+            let sessions = try fetchSessions(modelContext)
+            if let data = defaults.data(forKey: Self.recoveryKey),
+               let snapshot = try? JSONDecoder().decode(RecoverySnapshot.self, from: data),
+               snapshot.phase != .idle, (1...5_400).contains(snapshot.phaseDuration),
+               (0...snapshot.phaseDuration).contains(snapshot.secondsRemaining),
+               (0...1_000_000).contains(snapshot.completedSessions),
+               snapshot.sessionID == nil || sessions.contains(where: { $0.id == snapshot.sessionID && $0.endDate == nil }) {
+                let session = sessions.first(where: { $0.id == snapshot.sessionID && $0.endDate == nil })
+                currentSession = session
+                currentNoiseType = session?.noiseType ?? .brown
+                phase = snapshot.phase
+                phaseDuration = snapshot.phaseDuration
+                completedSessions = snapshot.completedSessions
+                secondsRemaining = snapshot.secondsRemaining
+                if let deadline = snapshot.deadline { updateElapsed(until: deadline, at: now()) }
+                // Relaunch never silently starts audio or another phase.
+                isRunning = false
+                deadline = nil
+                if secondsRemaining == 0 {
+                    advancePhase(completed: true, automaticallyStartNext: false)
+                    recoveryMessage = "Your previous session finished while the app was closed. Start the next session when you are ready."
+                } else {
+                    session?.elapsedSeconds = TimeInterval(phaseDuration - secondsRemaining)
+                    recoveryMessage = "Your previous session was recovered and paused. Tap Start to continue."
+                    persistRecovery()
+                }
+            } else {
+                defaults.removeObject(forKey: Self.recoveryKey)
+            }
+            // Reconcile legacy or incomplete records rather than leaving them running forever.
+            let abandoned = sessions.filter { $0.endDate == nil && $0.id != currentSession?.id }
+            for session in abandoned {
+                session.endDate = now()
+                session.completed = false
+            }
+            if !abandoned.isEmpty && recoveryMessage == nil {
+                recoveryMessage = "An interrupted session was saved to history. Start a new session when you are ready."
+            }
+            saveHistory()
+        } catch {
+            errorMessage = "Your previous session could not be restored. Tap Retry to try again."
+            didRestoreSession = false
+        }
     }
 
     private static func setting(_ defaults: UserDefaults, _ key: String, fallback: Int, range: ClosedRange<Int>) -> Int {

@@ -12,32 +12,32 @@ private final class AudioRenderState: @unchecked Sendable {
     var cafePhase: Float = 0.0
 }
 
+@MainActor
 @Observable
 final class NoiseGenerator {
-    private(set) var isPlaying = false
+    var isPlaying: Bool { audioEngine?.isRunning == true }
     private(set) var currentType: NoiseType = .brown
 
     private var audioEngine: AVAudioEngine?
     private var sourceNode: AVAudioSourceNode?
 
-    func start(type: NoiseType, volume: Float = 0.7) {
+    func start(type: NoiseType, volume: Float = 0.7) throws {
         stop()
         currentType = type
-        buildEngine(type: type, volume: volume)
+        try buildEngine(type: type, volume: volume)
     }
 
     func stop() {
         audioEngine?.stop()
         audioEngine = nil
         sourceNode = nil
-        isPlaying = false
     }
 
     func setVolume(_ v: Float) {
         audioEngine?.mainMixerNode.outputVolume = max(0, min(1, v))
     }
 
-    private func buildEngine(type: NoiseType, volume: Float) {
+    private func buildEngine(type: NoiseType, volume: Float) throws {
         let engine = AVAudioEngine()
         let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
         let state = AudioRenderState()
@@ -73,21 +73,21 @@ final class NoiseGenerator {
             try engine.start()
             audioEngine = engine
             sourceNode = node
-            isPlaying = true
         } catch {
-            print("NoiseGenerator error: \(error)")
+            engine.stop()
+            throw error
         }
     }
 
-    private static func whiteSample() -> Float { Float.random(in: -1...1) }
+    nonisolated private static func whiteSample() -> Float { Float.random(in: -1...1) }
 
-    private static func brownSample(state: AudioRenderState) -> Float {
+    nonisolated private static func brownSample(state: AudioRenderState) -> Float {
         let white = Float.random(in: -1...1)
         state.brownB = (state.brownB + 0.02 * white) / 1.02
         return state.brownB * 3.5
     }
 
-    private static func pinkSample(state: AudioRenderState) -> Float {
+    nonisolated private static func pinkSample(state: AudioRenderState) -> Float {
         let w = Float.random(in: -1...1)
         state.pinkB0 = 0.99886 * state.pinkB0 + w * 0.0555179
         state.pinkB1 = 0.99332 * state.pinkB1 + w * 0.0750759
@@ -101,7 +101,7 @@ final class NoiseGenerator {
         return pink * 0.11
     }
 
-    private static func rainSample(state: AudioRenderState) -> Float {
+    nonisolated private static func rainSample(state: AudioRenderState) -> Float {
         let white = Float.random(in: -1...1)
         state.rainBase = (state.rainBase + 0.008 * white) / 1.008
         var sample = state.rainBase * 2.0
@@ -115,7 +115,7 @@ final class NoiseGenerator {
         return sample * 0.75
     }
 
-    private static func cafeSample(state: AudioRenderState) -> Float {
+    nonisolated private static func cafeSample(state: AudioRenderState) -> Float {
         let white = Float.random(in: -1...1)
         state.cafeBase = (state.cafeBase + 0.012 * white) / 1.012
         state.cafePhase += 0.00007

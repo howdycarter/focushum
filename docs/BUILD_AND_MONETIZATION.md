@@ -55,3 +55,14 @@ Business support and App Review contact: [chris@newtonandcarter.com](mailto:chri
 The October 13, 2026 dependency audit covered Supabase 2.55.3, TelemetryDeck 1.5.1, RevenueCat 5.95.0 and their actual iOS Release target graph. Network transport uses Foundation URLSession. Hashing, nonce generation, signature checks and keychain access use Apple CryptoKit, CommonCrypto or Security. Supabase’s Swift Crypto 4.5.2 `Crypto` target re-exports CryptoKit on iOS; its BoringSSL, CryptoExtras and CXKCP implementations are excluded from this build graph. The archive links Apple CryptoKit/Security and has no matching BoringSSL/OpenSSL symbols. No app-defined encryption implementation was found. Empty optional service configuration is not the basis for this declaration: linked code was inspected too.
 
 Reassess this declaration when dependencies, platform flags or cryptography change. It does not settle privacy answers, distribution signing or any separate developer export obligations. Final archive verification must confirm the value is a Boolean `false` in the built app.
+
+
+## Lifecycle regression follow-up (October 13, 2026)
+
+The lifecycle patch adds deterministic tests for audio interruption policy, headphone disconnection, engine/media reset, start failure and retry, adaptive break volume, running/paused session recovery, overdue completion exactly once, legacy unfinished sessions, save failure/retry, and reset cleanup.
+
+These new tests have **not been compiled or executed** in the Linux review environment, which has neither Swift nor Apple SDKs. A whitespace/diff check is not an XCTest or end-to-end pass. Run the full FocusHum scheme tests on an authorized Mac and retain the xcresult before merging.
+
+Recovery behavior: a reopened active session is restored paused with elapsed wall time applied; a session that expired while closed is completed once and its next phase stays stopped. No automatic audio playback starts on relaunch. Headphone removal pauses sound without automatically moving it to a speaker. Interruption resume requires both previous playback intent and the system's should-resume option; manual pause cancels that intent. Audio/start and history-save failures now expose a retry action.
+
+Still required on a physical iPhone: fresh install and onboarding; wired/Bluetooth unplug and reconnect; call/Siri interruption; screen lock and background audio; kill/reopen a running or paused session; auto-start breaks on and off; large text/VoiceOver through new notices; signed sandbox purchase/restore. Injected playback tests are policy tests, not proof that AVAudioEngine or hardware notifications behave correctly on a device.

@@ -60,7 +60,16 @@ struct HomeView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { pomodoroVM.refresh() }
+            else { pomodoroVM.checkpoint() }
         }
+        .alert("Sound", isPresented: Binding(get: { audioVM.errorMessage != nil }, set: { if !$0 { audioVM.errorMessage = nil } })) {
+            Button("Retry Sound") { audioVM.play() }
+            Button("Keep Silent", role: .cancel) { audioVM.errorMessage = nil }
+        } message: { Text(audioVM.errorMessage ?? "") }
+        .alert("Session History", isPresented: Binding(get: { pomodoroVM.errorMessage != nil }, set: { if !$0 { pomodoroVM.errorMessage = nil } })) {
+            Button("Retry") { pomodoroVM.retryHistorySave() }
+            Button("OK", role: .cancel) { pomodoroVM.errorMessage = nil }
+        } message: { Text(pomodoroVM.errorMessage ?? "") }
         .onChange(of: pomodoroVM.phase) { _, newPhase in
             audioVM.isBreakPhase = newPhase.isBreak
         }
@@ -69,6 +78,13 @@ struct HomeView: View {
     private var focusContent: some View {
         VStack(spacing: 0) {
             topBar
+            if let recoveryMessage = pomodoroVM.recoveryMessage {
+                Text(recoveryMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 12)
+            }
             Spacer(minLength: 24)
 
             Text(pomodoroVM.phase.label.uppercased())
